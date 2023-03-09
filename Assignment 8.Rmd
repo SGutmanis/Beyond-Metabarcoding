@@ -1,0 +1,70 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+In order to better what effect garlic mustard may have on the plant community and if the presence of garlic mustard or sampling population has a stronger effect on plant communities, I first need inspect the data to see if any edits must be made so it may be better interpereted. 
+
+Install necessary packages
+```{r,warning=F,message=F,echo=F}
+library(dplyr)
+library(ggplot2)
+library(ggtree)
+library(ape)
+library(vegan)
+library(tidyverse)
+```
+
+Inspect the dataset
+```{r}
+Flo<-read.csv("./FloristicSurvey.csv") #load the dataset into r
+```
+```{r}
+str(Flo) #inspect the structure of the data
+dim(Flo) #check dimensions of the dataset
+```
+
+The data looks good however we will need to make some adjustments to the data before we can analyze it.
+
+Firstly we must make a binary distance matrix
+```{r}
+Flot<-Flo[,-(2:10)] #subset dataset into data about Samples and data about species diversity
+Flot<- Flot %>% remove_rownames %>% column_to_rownames(var="Quadrate")
+Sample<-Flo[,1:3]
+Sample$Population<-as.character(Sample$Population)
+```
+
+```{r}
+FlotBin<-Flot
+FlotBin[FlotBin>0]<-1
+```
+
+```{r}
+FloDist<-dist(FlotBin, method='binary')
+```
+
+Now that I have made a binary distance matrix, we can construct a tree to visualize the data.
+```{r}
+FloTree<-nj(FloDist)
+```
+```{r}
+NMDSFlo<-metaMDS(FloDist, k=2, trymax= 25)
+```
+```{r}
+FDat<-data.frame(NMDS1=NMDSFlo$points[,1],
+                 NMDS2=NMDSFlo$points[,2],
+                 Quadrate=rownames(Flot))
+```
+```{r}
+FDat<-merge(FDat, Sample, by= "Quadrate", all.x=T,all.y=F)
+```
+```{r, fig.cap="Figure 1: A bivariate plot reflecting the patterns of species abundance in plant populations taken from areas with and without mustard garlic. Samples taken from plots with mustard garlic are in red and those from plots without mustard garlic are in blue. No clear patterns are apparent."}
+ggplot(data= FDat, aes(x = NMDS1,y = NMDS2)) + geom_point(aes(color=Location))
+```
+As you can see from this plot, there is no distinct clustering of the populations with or without garlic mustard. There is not consistent clustering between the i(with garlic mustard), and o (without mustard garlic) groups and therefore I would conclude that mustard garlic has no impact on species abundance.
+
+```{r, fig.cap="Figure 2: A bivariate plot reflecting the patterns of species abundance in plant populations sorted by different sampling populations. Species abundance data was collected from 5 different plots. Populations are denoted by different colors which follows the legend on the right hand side. There are some visible clusters in this plot, though not all of the populations are very tightly clustered."}
+ggplot(data= FDat, aes(x = NMDS1,y = NMDS2)) + geom_point(aes(color=Population))
+```
+Figure 2 shows more clustering than figure 1. While it is not very tight clustering, there are a few clear clusters like population 7 in the bottom left, and population 3 along the top left. This would suggest that sampling population has more effect on plant communities than the presence of garlic mustard does. 
+
